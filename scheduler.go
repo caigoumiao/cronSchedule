@@ -86,9 +86,8 @@ func (sche *Scheduler) run(job CronJob) {
 			}()
 			return job.Process()
 		}()
-		if err != nil {
-			sche.count[job.Name()]++
-		}
+		// 对任务执行进行计数
+		sche.count[job.Name()]++
 		// 如果出错不选择重启，那么直接退出
 		if err != nil && !job.IfReboot() {
 			break
