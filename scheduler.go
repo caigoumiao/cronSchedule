@@ -71,7 +71,7 @@ func (sche *Scheduler) run(job CronJob) {
 	for {
 		// 计算下一次运行时间
 		nextTimeInterval := calculateNextTime(job.Phase(), job.Period(), sche.count[job.Name()])
-		if nextTimeInterval > 0 {
+		if nextTimeInterval >= 0 {
 			time.Sleep(time.Duration(nextTimeInterval) * time.Second)
 		} else {
 			// 日志、报警
@@ -121,7 +121,7 @@ func calculateNextTime(phase []int, period int, calCount int) int {
 		if i == len(phase) {
 			return period - nowTimePhase + phase[0]
 		} else {
-			return phase[i]
+			return phase[i] - nowTimePhase
 		}
 	}
 }
