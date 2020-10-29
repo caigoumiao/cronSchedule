@@ -55,7 +55,8 @@ type Scheduler struct {
 // 生成一个Scheduler实例
 func New() *Scheduler {
 	return &Scheduler{
-		jobs: nil,
+		jobs:    nil,
+		nameSet: make(map[string]bool),
 	}
 }
 
