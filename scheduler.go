@@ -100,6 +100,10 @@ func (sche *Scheduler) Start() {
 	}
 }
 
+func (sche *Scheduler) SetLogger(logger Logger) {
+	sche.logger = logger
+}
+
 func (sche *Scheduler) run(job *CronJobWrapper) {
 	sche.logger.InfoF("Cron scheduler start job[name=%s]", job.name())
 	for {
