@@ -49,6 +49,7 @@ func (c *CronJobWrapper) ifReboot() bool {
 
 type Scheduler struct {
 	jobs    []*CronJobWrapper
+	logger  Logger
 	nameSet map[string]bool
 }
 
@@ -57,6 +58,7 @@ func New() *Scheduler {
 	return &Scheduler{
 		jobs:    nil,
 		nameSet: make(map[string]bool),
+		logger:  defaultLogger,
 	}
 }
 
@@ -78,6 +80,7 @@ func (sche *Scheduler) Register(phase []int, period int, job CronJob) {
 	jobName := job.Name()
 	if _, ok := sche.nameSet[jobName]; jobName == "" || ok {
 		// 任务名为空或重复的情况
+		sche.logger.ErrorF("CronScheduler register failed to register job, name=%s", jobName)
 	} else {
 		sche.jobs = append(sche.jobs, &CronJobWrapper{
 			job:    job,
@@ -89,6 +92,7 @@ func (sche *Scheduler) Register(phase []int, period int, job CronJob) {
 }
 
 func (sche *Scheduler) Start() {
+	sche.logger.InfoF("CronScheduler starting......")
 	for i := 0; i < len(sche.jobs); i++ {
 		if sche.jobs[i].ifActive() && validateJob(sche.jobs[i]) {
 			go sche.run(sche.jobs[i])
@@ -97,20 +101,21 @@ func (sche *Scheduler) Start() {
 }
 
 func (sche *Scheduler) run(job *CronJobWrapper) {
+	sche.logger.InfoF("Cron scheduler start job[name=%s]", job.name())
 	for {
 		// 计算下一次运行时间
 		nextTimeInterval := calculateNextTime(job.phase, job.period, job.count)
 		if nextTimeInterval >= 0 {
 			time.Sleep(time.Duration(nextTimeInterval) * time.Second)
 		} else {
-			// 日志、报警
-			// 退出
+			sche.logger.ErrorF("CronScheduler job[name=%s] calculateNextTime wrong number=%d", job.name(), nextTimeInterval)
 			break
 		}
 		err := func() (err error) {
 			defer func() {
 				if r := recover(); r != nil {
 					err = fmt.Errorf("job %s panic, recover=%v", job.name(), r)
+					sche.logger.ErrorF("CronScheduler job[name=%s] recover err=%s", job.name(), err.Error())
 				}
 			}()
 			return job.Process()
@@ -119,6 +124,7 @@ func (sche *Scheduler) run(job *CronJobWrapper) {
 		job.count++
 		// 如果出错不选择重启，那么直接退出
 		if err != nil && !job.ifReboot() {
+			sche.logger.ErrorF("CronScheduler job[name=%s] exit err=%s", job.name(), err.Error())
 			break
 		}
 	}
